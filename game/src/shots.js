@@ -223,6 +223,9 @@ export function stageShot(name) {
   // Default: the cover — level 2 mid-play, all five required elements in
   // one frame: the vault room, guard cones, camera cones, the diamond and
   // the alarm meter, with Rook hiding in a shadow pool by a display case.
+  // The four guards stand in the four corners of the floor and aim
+  // outward, so no two cone tips land in the same place: each amber wedge
+  // reads on its own at thumbnail size instead of merging into one blob.
   const world = createWorld(1);
   world.time = 24;
   world.alarm = 58;
@@ -234,17 +237,20 @@ export function stageShot(name) {
   world.player.loot = 1;
   world.lootTaken.add(2);
   const g0 = world.guards[0];
-  g0.x = 300; g0.y = 300; g0.angle = 0.5; g0.detection = 0.2;
+  g0.x = 170; g0.y = 180; g0.angle = 0.8; g0.detection = 0.2;
   const g1 = world.guards[1];
-  g1.x = 640; g1.y = 170; g1.angle = Math.PI / 2; g1.detection = 0.1;
+  g1.x = 700; g1.y = 140; g1.angle = 2.35; g1.detection = 0.1;
   const g2 = world.guards[2];
-  g2.x = 700; g2.y = 430; g2.angle = Math.PI; g2.detection = 0.62;
+  g2.x = 640; g2.y = 470; g2.angle = 0.25; g2.detection = 0.62;
   g2.state = 'suspicious';
   g2.target = { x: 786, y: 498 };
   const g3 = world.guards[3];
-  g3.x = 500; g3.y = 480; g3.angle = -Math.PI / 2; g3.detection = 0.05;
-  world.cameras[0].angle = Math.PI / 2 + 0.5;
-  world.cameras[1].angle = Math.PI - 0.4;
+  g3.x = 310; g3.y = 550; g3.angle = -0.9; g3.detection = 0.05;
+  // Cameras aim apart too: the top one sweeps down-right across the upper
+  // floor, the right-edge one looks left across the middle, so the two
+  // cyan cones never stack on each other or on the diamond.
+  world.cameras[0].angle = 0.6;
+  world.cameras[1].angle = 2.9;
   world.score = 240;
   world.levelTime = 96;
   return { world, screen: 'play' };

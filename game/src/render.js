@@ -159,7 +159,7 @@ function drawCone(ctx, x, y, angle, range, halfAngle, fill, edge) {
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.strokeStyle = edge;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + Math.cos(angle - halfAngle) * range, y + Math.sin(angle - halfAngle) * range);
@@ -310,18 +310,42 @@ function drawLootAndDiamond(ctx, world) {
 function drawCameras(ctx, world) {
   for (const camera of world.cameras) {
     const disabled = camera.disabledTimer > 0;
-    const fill = disabled ? 'rgba(120, 130, 140, 0.14)' : camera.spotting ? 'rgba(255, 60, 50, 0.5)' : 'rgba(140, 200, 255, 0.36)';
-    const edge = disabled ? 'rgba(120, 130, 140, 0.4)' : camera.spotting ? 'rgba(255, 60, 50, 0.85)' : 'rgba(140, 200, 255, 0.6)';
+    // Cameras read cyan-blue, never amber: a guard cone and a camera cone
+    // must be tellable apart at thumbnail size, so the camera cone is a
+    // vivid cyan with a hard edge instead of the old pale blue wash.
+    const fill = disabled ? 'rgba(120, 130, 140, 0.14)' : camera.spotting ? 'rgba(255, 60, 50, 0.5)' : 'rgba(45, 215, 255, 0.5)';
+    const edge = disabled ? 'rgba(120, 130, 140, 0.4)' : camera.spotting ? 'rgba(255, 60, 50, 0.9)' : 'rgba(45, 215, 255, 0.95)';
     drawCone(ctx, camera.x, camera.y, camera.angle, camera.range, 0.5, fill, edge);
-    // Mount: a small dome on the wall.
-    ctx.fillStyle = disabled ? '#5a636b' : '#2c3e46';
+    // Mount: a big dome with a bright lens and a barrel nub showing where
+    // it looks, ringed in cyan so it never blends into the wall or floor.
+    ctx.fillStyle = disabled ? '#5a636b' : '#16303c';
     ctx.beginPath();
-    ctx.arc(camera.x, camera.y, 10, 0, Math.PI * 2);
+    ctx.arc(camera.x, camera.y, 14, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = disabled ? '#8a939b' : camera.spotting ? '#ff3b30' : '#7fd4ff';
+    ctx.strokeStyle = disabled ? '#8a939b' : '#2dd7ff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.strokeStyle = disabled ? '#8a939b' : '#2dd7ff';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(camera.x, camera.y, 5, 0, Math.PI * 2);
+    ctx.moveTo(camera.x + Math.cos(camera.angle) * 12, camera.y + Math.sin(camera.angle) * 12);
+    ctx.lineTo(camera.x + Math.cos(camera.angle) * 20, camera.y + Math.sin(camera.angle) * 20);
+    ctx.stroke();
+    ctx.fillStyle = disabled ? '#8a939b' : camera.spotting ? '#ff3b30' : '#a5ecff';
+    ctx.beginPath();
+    ctx.arc(camera.x, camera.y, 7, 0, Math.PI * 2);
     ctx.fill();
+    // "CAM" tag under the mount, on a dark pill so it reads over any cone.
+    ctx.fillStyle = 'rgba(4, 12, 18, 0.85)';
+    roundRect(ctx, camera.x - 19, camera.y + 22, 38, 16, 8);
+    ctx.fill();
+    ctx.strokeStyle = disabled ? 'rgba(140, 150, 160, 0.7)' : 'rgba(45, 215, 255, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = disabled ? '#9aa5ad' : '#2dd7ff';
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CAM', camera.x, camera.y + 34);
     if (disabled) {
       ctx.fillStyle = '#e8e8e8';
       ctx.font = 'bold 11px system-ui, sans-serif';
@@ -335,7 +359,7 @@ function drawGuards(ctx, world) {
   for (const guard of world.guards) {
     const alerted = guard.state === 'alerted';
     const suspicious = guard.state === 'suspicious' || guard.state === 'search';
-    const fill = alerted ? 'rgba(255, 70, 60, 0.5)' : suspicious ? 'rgba(255, 220, 130, 0.3)' : 'rgba(255, 196, 90, 0.42)';
+    const fill = alerted ? 'rgba(255, 70, 60, 0.5)' : suspicious ? 'rgba(255, 220, 130, 0.3)' : 'rgba(255, 196, 90, 0.38)';
     const edge = alerted ? 'rgba(255, 70, 60, 0.8)' : 'rgba(255, 196, 90, 0.7)';
     drawCone(ctx, guard.x, guard.y, guard.angle, 235, 0.61, fill, edge);
     // Body: navy uniform with gold trim and a cap.
