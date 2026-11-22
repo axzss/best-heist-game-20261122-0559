@@ -6,8 +6,10 @@
 import { CAMERA } from './config.js';
 import { hasLineOfSight, pointInCone } from './vision.js';
 
-/** Build a camera's runtime state from its level definition. */
-export function createCamera(def) {
+/** Build a camera's runtime state from its level definition. `rng` is an
+ * optional seeded generator; without one it falls back to Math.random. */
+export function createCamera(def, rng) {
+  const next = rng ?? Math.random;
   return {
     x: def.x,
     y: def.y,
@@ -15,7 +17,7 @@ export function createCamera(def) {
     sweep: def.sweep,
     range: def.range ?? CAMERA.range,
     angle: def.baseAngle,
-    sweepPhase: Math.random() * Math.PI * 2,
+    sweepPhase: next() * Math.PI * 2,
     disabledTimer: 0,
     spotting: false,
   };

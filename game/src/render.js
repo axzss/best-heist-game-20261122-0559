@@ -539,7 +539,7 @@ function drawHud(ctx, world) {
   // The alarm meter: the most prominent HUD element.
   const alarmX = 720;
   const alarmW = 220;
-  const pct = Math.round(world.alarm);
+  const pct = Number.isFinite(world.alarm) ? Math.round(world.alarm) : 0;
   ctx.fillStyle = PALETTE.hudMuted;
   ctx.font = 'bold 12px system-ui, sans-serif';
   ctx.fillText(world.lockdown ? '⚠ LOCKDOWN' : 'ALARM', alarmX, 20);
@@ -566,11 +566,36 @@ function drawHud(ctx, world) {
     ctx.font = '12px system-ui, sans-serif';
     ctx.fillText('100% = lockdown', alarmX, 56);
   }
-  // Detection eye: the highest guard detection right now.
-  const maxDetect = world.guards.reduce((m, g) => Math.max(m, g.detection), 0);
+  // Detection eye: the highest guard detection right now. A non-finite
+  // detection (a sim bug upstream) must never print as NaN in the HUD.
+  const maxDetect = world.guards.reduce(
+    (m, g) => Math.max(m, Number.isFinite(g.detection) ? g.detection : 0),
+    0,
+  );
   ctx.fillStyle = maxDetect > 0.8 ? '#ff5346' : PALETTE.hudText;
   ctx.font = '15px Georgia, serif';
   ctx.fillText(`👁 ${Math.round(maxDetect * 100)}%`, 620, 60);
+}
+
+/** Alarm vignette: a radial red edge-glow whose strength follows the alarm
+ * meter, with a slow pulse driven only by sim time (world.time), so staged
+ * frames stay deterministic. Capped low so a mid-alarm frame — the cover,
+ * staged at 58% — stays fully readable. Drawn after the world and lighting
+ * but before the HUD, so every HUD element stays crisp. */
+function drawAlarmVignette(ctx, world) {
+  const level = Number.isFinite(world.alarm) ? Math.min(1, Math.max(0, world.alarm / 100)) : 0;
+  if (level <= 0) return;
+  const pulse = 0.5 + 0.5 * Math.sin(world.time * 2.4);
+  const intensity = Math.min(level * 0.3, 0.22) * (0.85 + 0.15 * pulse);
+  if (intensity <= 0.001) return;
+  const cx = VIEW.width / 2;
+  const cy = VIEW.height / 2;
+  const radius = Math.hypot(cx, cy);
+  const grad = ctx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, radius);
+  grad.addColorStop(0, 'rgba(255, 40, 30, 0)');
+  grad.addColorStop(1, `rgba(255, 40, 30, ${intensity.toFixed(3)})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, VIEW.width, VIEW.height);
 }
 
 function panel(ctx, title, lines, accent) {
@@ -615,6 +640,7 @@ export function render(ctx, world, screen) {
   drawCameras(ctx, world);
   drawGuards(ctx, world);
   drawPlayer(ctx, world);
+  drawAlarmVignette(ctx, world);
   drawHud(ctx, world);
   if (screen === SCREEN_BRIEF) {
     panel(ctx, world.level.name, [world.level.brief, 'Grab the diamond, then reach the green EXIT door.'], PALETTE.titleGold);

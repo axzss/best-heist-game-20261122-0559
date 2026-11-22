@@ -9,6 +9,7 @@ import { createCamera, empNearestCamera, updateCamera } from './cameras.js';
 import { createPlayer, throwCoin, updateCoin, updateCoinPing, updatePlayer } from './player.js';
 import { circleHitsRect, resolveCircleRect } from './vision.js';
 import { LEVELS, solidRects } from './levels.js';
+import { mulberry32 } from './random.js';
 import { COIN, PLAYER } from './config.js';
 
 export const EVENT_CAUGHT = 'caught';
@@ -27,13 +28,16 @@ export const SCREEN_OVER = 'over';
 /** Build a fresh world for level `levelIndex` (0-based). */
 export function createWorld(levelIndex, carry) {
   const level = LEVELS[levelIndex];
+  const seed = level.seed ?? 0;
   const world = {
     levelIndex,
     level,
     time: 0,
     player: createPlayer(level.spawn),
     guards: level.guards.map(createGuard),
-    cameras: level.cameras.map(createCamera),
+    // One seeded generator per camera (seed + camera index), so every run
+    // of a level sweeps identically — no Math.random in the simulation.
+    cameras: level.cameras.map((def, i) => createCamera(def, mulberry32(seed + i))),
     alarm: level.alarmStart ?? 0,
     lockdown: false,
     lockdownTimer: 0,

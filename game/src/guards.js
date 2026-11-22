@@ -4,7 +4,7 @@
 // noises and coin pings, chases on full detection, sweeps the last-seen
 // spot when the trail goes cold, then walks back to its patrol.
 
-import { GUARD, STEP } from './config.js';
+import { GUARD, PLAYER, STEP } from './config.js';
 import { angleDelta, hasLineOfSight, inShadow, lightFactor, pointInCone } from './vision.js';
 
 export const GUARD_PATROL = 'patrol';
@@ -104,7 +104,7 @@ export function updateGuard(guard, world, dt) {
     const closeness = 1 - dist / GUARD.coneRange;
     let rate = GUARD.detectBase * (0.35 + 0.85 * closeness);
     rate *= lightFactor(player.x, player.y, world.level.lamps, world.level.shadows);
-    if (player.sneaking) rate *= GUARD.sneakDetectScale;
+    if (player.sneaking) rate *= PLAYER.sneakDetectScale;
     if (inShadow(player.x, player.y, world.level.shadows)) rate *= GUARD.shadowScale;
     guard.detection = Math.min(1, guard.detection + rate * dt);
     guard.lastSeen = { x: player.x, y: player.y };
