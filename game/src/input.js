@@ -1,6 +1,7 @@
 // Keyboard and mouse input for the heist: movement keys, sneak, the coin
-// throw (click or F), the EMP key (E) and pause (P / Escape). The game reads
-// a plain snapshot each tick; the DOM event wiring stays in this file.
+// throw (click or F), the EMP key (E), the smoke pellet (Q) and pause
+// (P / Escape). The game reads a plain snapshot each tick; the DOM event
+// wiring stays in this file.
 
 const MOVE_KEYS = {
   KeyW: 'up', ArrowUp: 'up',
@@ -17,6 +18,7 @@ export function createInput() {
     // Edge-triggered actions, consumed by the world each tick.
     coinQueued: null, // {x, y} in canvas pixels, or null
     empQueued: false,
+    smokeQueued: false,
     pauseQueued: false,
     confirmQueued: false,
     mouse: { x: 0, y: 0 },
@@ -38,6 +40,7 @@ export function bindInput(canvas) {
       input.coinQueued = { x: input.mouse.x, y: input.mouse.y };
     }
     if (event.code === 'KeyE' && !event.repeat) input.empQueued = true;
+    if (event.code === 'KeyQ' && !event.repeat) input.smokeQueued = true;
     if ((event.code === 'KeyP' || event.code === 'Escape') && !event.repeat) {
       input.pauseQueued = true;
     }

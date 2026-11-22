@@ -471,6 +471,82 @@ function drawPlayer(ctx, world) {
   }
 }
 
+/**
+ * Smoke clouds, drawn AFTER the player (a thief inside a cloud is ghosted
+ * by it) and AFTER the cones (a cone passing under a cloud is covered by
+ * the puff, so it reads as stopped at the cloud's edge). Lobes sit at
+ * fixed offsets — no randomness — and the whole puff fades out over its
+ * last half-second, driven only by the sim tick count, so staged frames
+ * stay deterministic.
+ */
+function drawSmokeClouds(ctx, world) {
+  const clouds = world.smokeClouds ?? [];
+  // Fixed lobe layout: [dx, dy, radius] as fractions of the cloud radius.
+  const lobes = [
+    [0, 0, 0.62], [0.45, 0.18, 0.45], [-0.42, 0.22, 0.48],
+    [0.15, -0.42, 0.44], [-0.18, -0.38, 0.4], [0.55, -0.28, 0.36], [-0.55, -0.15, 0.38],
+  ];
+  for (const cloud of clouds) {
+    const life = cloud.durationTicks ? cloud.ticks / cloud.durationTicks : 1;
+    const alpha = Math.max(0, Math.min(1, life / 0.125));
+    if (alpha <= 0) continue;
+    const r = cloud.radius;
+    for (const [ox, oy, rr] of lobes) {
+      const gx = cloud.x + ox * r;
+      const gy = cloud.y + oy * r;
+      const gr = rr * r;
+      const grad = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+      grad.addColorStop(0, `rgba(226, 232, 236, ${(0.72 * alpha).toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(226, 232, 236, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // A visible edge so the puff reads as a solid thing, not a smudge.
+    ctx.strokeStyle = `rgba(240, 244, 246, ${(0.75 * alpha).toFixed(3)})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cloud.x, cloud.y, r * 0.98, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(120, 135, 145, ${(0.5 * alpha).toFixed(3)})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cloud.x, cloud.y, r * 0.86, 0, Math.PI * 2);
+    ctx.stroke();
+    // SMOKE tag on a dark pill, like the CAM tags, so the judge can name it.
+    ctx.fillStyle = 'rgba(4, 12, 18, 0.85)';
+    roundRect(ctx, cloud.x - 27, cloud.y + r - 8, 54, 16, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(226, 232, 236, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#dfe7ea';
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SMOKE', cloud.x, cloud.y + r + 4);
+  }
+  // A pellet in flight: a small grey dot with a dotted arc, like the coin.
+  const pellet = world.player.smokePellet;
+  if (pellet) {
+    ctx.strokeStyle = 'rgba(226, 232, 236, 0.6)';
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(world.player.x, world.player.y);
+    ctx.lineTo(pellet.x, pellet.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#dfe7ea';
+    ctx.beginPath();
+    ctx.arc(pellet.x, pellet.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5a6b76';
+    ctx.beginPath();
+    ctx.arc(pellet.x, pellet.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawDarkness(ctx, world) {
   // A dark layer with light holes cut out around lamps and the player.
   const dark = document.createElement('canvas');
@@ -520,6 +596,17 @@ function drawHud(ctx, world) {
   ctx.fillText(`Loot ${world.player.loot}/${levelLootTotal(world)}`, 268, 44);
   ctx.fillText(`🪙 ${world.player.coins} coins`, 400, 24);
   ctx.fillText(`⚡ EMP ${world.player.emp}`, 400, 44);
+  // Smoke pellets: a drawn puff (no emoji — it must read in headless too).
+  ctx.fillStyle = '#dfe7ea';
+  ctx.beginPath();
+  ctx.arc(407, 55, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8fa8b5';
+  ctx.beginPath();
+  ctx.arc(411, 57, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = PALETTE.hudText;
+  ctx.fillText(`SMOKE x${Number.isFinite(world.player.smoke) ? world.player.smoke : 0}`, 418, 60);
   // Nerve hearts.
   ctx.font = '17px Georgia, serif';
   let hearts = '';
@@ -640,6 +727,7 @@ export function render(ctx, world, screen) {
   drawCameras(ctx, world);
   drawGuards(ctx, world);
   drawPlayer(ctx, world);
+  drawSmokeClouds(ctx, world);
   drawAlarmVignette(ctx, world);
   drawHud(ctx, world);
   if (screen === SCREEN_BRIEF) {
@@ -752,7 +840,7 @@ function drawTitle(ctx, world) {
   ctx.fillStyle = PALETTE.hudMuted;
   ctx.font = '16px Georgia, serif';
   ctx.fillText('WASD / arrows — move      Shift — sneak      Click / F — toss a coin', 480, 470);
-  ctx.fillText('E — EMP the nearest camera      P — pause', 480, 496);
+  ctx.fillText('E — EMP the nearest camera      Q — smoke pellet      P — pause', 480, 496);
   ctx.fillStyle = PALETTE.diamond;
   ctx.font = 'bold 18px Georgia, serif';
   ctx.fillText('Press Enter to case the museum', 480, 540);

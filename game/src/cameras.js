@@ -4,7 +4,7 @@
 // cone goes dark grey and it cannot spot anyone while it is down.
 
 import { CAMERA } from './config.js';
-import { hasLineOfSight, pointInCone } from './vision.js';
+import { cloudBlocksSight, hasLineOfSight, pointInCone } from './vision.js';
 
 /** Build a camera's runtime state from its level definition. `rng` is an
  * optional seeded generator; without one it falls back to Math.random. */
@@ -34,7 +34,11 @@ export function updateCamera(camera, world, dt) {
   camera.angle = camera.baseAngle + Math.sin(camera.sweepPhase) * camera.sweep;
   const player = world.player;
   const inCone = pointInCone(player.x, player.y, camera.x, camera.y, camera.angle, camera.range, CAMERA.halfAngle);
-  const seen = inCone && hasLineOfSight(camera.x, camera.y, player.x, player.y, world.blockers);
+  // A camera whose ray to the thief crosses a smoke cloud is blind while
+  // blocked, so it fills no alarm — same single-source cloud list as the
+  // guards, fixed by the world at the start of this tick.
+  const seen = inCone && hasLineOfSight(camera.x, camera.y, player.x, player.y, world.blockers)
+    && !cloudBlocksSight(camera.x, camera.y, player.x, player.y, world.smokeClouds ?? []);
   camera.spotting = seen;
   if (seen) {
     world.alarm = Math.min(100, world.alarm + CAMERA.alarmPerSecond * dt);

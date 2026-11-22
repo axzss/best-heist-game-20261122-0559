@@ -80,6 +80,12 @@ export function playCoinPing() {
   tone(2093, 0.25, 'sine', 0.06, 2093);
 }
 
+/** The smoke pellet's hiss as the cloud blooms. */
+export function playSmoke() {
+  noiseBurst(0.5, 0.09, 1100);
+  tone(320, 0.25, 'sine', 0.05, 180);
+}
+
 /** The EMP zap when a camera goes dark. */
 export function playEmpZap() {
   tone(1800, 0.3, 'sawtooth', 0.1, 120);

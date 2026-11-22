@@ -3,10 +3,10 @@
 // keys, lasers, nerves, scoring and the level / game-complete events. The
 // renderer reads this state; it never writes it.
 
-import { ALARM, LASER, STEP } from './config.js';
+import { ALARM, LASER, SMOKE, STEP } from './config.js';
 import { createGuard, guardHear, updateGuard } from './guards.js';
 import { createCamera, empNearestCamera, updateCamera } from './cameras.js';
-import { createPlayer, throwCoin, updateCoin, updateCoinPing, updatePlayer } from './player.js';
+import { createPlayer, throwCoin, throwSmoke, updateCoin, updateCoinPing, updatePlayer, updateSmokePellet } from './player.js';
 import { circleHitsRect, resolveCircleRect } from './vision.js';
 import { LEVELS, solidRects } from './levels.js';
 import { mulberry32 } from './random.js';
@@ -49,6 +49,11 @@ export function createWorld(levelIndex, carry) {
     lasersOn: false,
     laserTimer: 0,
     hearRadius: 260,
+    // Active smoke clouds: {x, y, radius, ticks, durationTicks}. The list
+    // is the single source of truth for smoke occlusion this tick — it is
+    // advanced once, at the top of updateWorld, before any entity steps,
+    // so guards, cameras and the renderer all read the same clouds.
+    smokeClouds: [],
     events: [],
     blockers: [],
     screen: SCREEN_PLAY,
@@ -175,16 +180,55 @@ function updateAlarm(world, dt) {
 }
 
 /**
+ * Advance the smoke state one tick: fly the pellet (a wall or max range
+ * ends the flight and blooms the cloud), tick every cloud down by exactly
+ * one integer tick, and drop expired clouds. Called FIRST in updateWorld,
+ * before any entity step, so no ray in this tick can see a cloud that
+ * expires later in the same tick, and no ray order can change the result.
+ * The landing hiss reuses the existing noise system: guards in earshot go
+ * SUSPICIOUS and walk to the cloud centre (ALERTED guards ignore it,
+ * exactly as guardHear already handles for coins).
+ */
+function updateSmoke(world, dt) {
+  const impact = updateSmokePellet(world.player, world.blockers, dt);
+  if (impact) {
+    world.smokeClouds.push({
+      x: impact.x,
+      y: impact.y,
+      radius: SMOKE.radiusPx,
+      ticks: SMOKE.durationTicks,
+      durationTicks: SMOKE.durationTicks,
+    });
+    world.events.push({ type: 'smoke', x: impact.x, y: impact.y });
+    for (const guard of world.guards) {
+      guardHear(guard, impact.x, impact.y, { ...world, hearRadius: SMOKE.hearRadius });
+    }
+  }
+  for (const cloud of world.smokeClouds) cloud.ticks -= 1;
+  world.smokeClouds = world.smokeClouds.filter((cloud) => cloud.ticks > 0);
+}
+
+/**
  * Advance the simulation one fixed step. `input` is the live input state;
- * queued actions (coin, EMP, pause) are consumed here. Returns an event
- * string (EVENT_CAUGHT / EVENT_LEVEL / EVENT_GAME) or null.
+ * queued actions (coin, EMP, smoke, pause) are consumed here. Returns an
+ * event string (EVENT_CAUGHT / EVENT_LEVEL / EVENT_GAME) or null.
  */
 export function updateWorld(world, input, dt = STEP) {
   world.time += dt;
   world.levelTime += dt;
   world.events.length = 0;
 
+  // Smoke first: pellet flight, cloud spawn and expiry are fixed before
+  // any guard, camera or player step reads the cloud list this tick.
+  updateSmoke(world, dt);
+
   // Queued actions.
+  if (input.smokeQueued) {
+    input.smokeQueued = false;
+    if (throwSmoke(world.player)) {
+      world.events.push({ type: 'smoke-throw' });
+    }
+  }
   if (input.coinQueued) {
     const target = input.coinQueued;
     input.coinQueued = null;

@@ -101,6 +101,13 @@ function findPath(world, tx, ty) {
   }));
 }
 
+// The autopilot throws its one smoke pellet on a fixed tick, mid-corridor
+// on the way to the diamond: at tick 150 it is at ~(367, 362) moving east,
+// so the pellet lands ~(495, 362) across guard 0's patrol loop and the
+// cloud blinds the guard while Rook crosses. Fixed tick, fixed state —
+// the throw is deterministic, and the win test proves it every run.
+const SMOKE_THROW_TICK = 150;
+
 /** An autopilot that plays the current level: diamond, then the exit. */
 export function createAutopilot(world) {
   const input = createInput();
@@ -108,6 +115,8 @@ export function createAutopilot(world) {
   let pathIndex = 0;
   let replanTimer = 0;
   let targetKind = 'diamond';
+  let tick = 0;
+  let smokeThrown = false;
 
   function currentTarget() {
     if (!world.player.hasDiamond) return { x: world.level.diamond.x, y: world.level.diamond.y, kind: 'diamond' };
@@ -133,6 +142,11 @@ export function createAutopilot(world) {
     input,
     /** One autopilot tick: steer `input` from the live world. */
     step(dt) {
+      tick += 1;
+      if (!smokeThrown && tick === SMOKE_THROW_TICK) {
+        input.smokeQueued = true;
+        smokeThrown = true;
+      }
       replanTimer -= dt;
       const target = currentTarget();
       if (target.kind !== targetKind) {
@@ -193,23 +207,31 @@ export function stageShot(name) {
     world.time = 5;
     return { world, screen: 'title' };
   }
-  if (name === 'coin') {
+  if (name === 'smoke') {
+    // The smoke shot (replaces the old coin shot — the coin is proven in
+    // rounds 1–2 and still in the game): a cloud blooms mid-gallery with
+    // Rook hidden inside it, a guard's cone ends at the cloud's edge while
+    // the guard investigates the hiss ("?" overhead), and the camera cone
+    // from the top mount runs into the same cloud. HUD shows SMOKE x0.
     const world = createWorld(0);
     const player = world.player;
-    player.x = 300;
-    player.y = 350;
-    player.coinPing = { x: 520, y: 300, timer: 1.3 };
+    player.x = 585;
+    player.y = 365;
+    player.smoke = 0; // the pellet is spent — the cloud is the proof
+    world.smokeClouds = [{ x: 520, y: 320, radius: 96, ticks: 150, durationTicks: 240 }];
     const guard = world.guards[0];
-    guard.x = 452;
-    guard.y = 282;
-    guard.angle = Math.atan2(300 - 282, 520 - 452);
+    guard.x = 300;
+    guard.y = 300;
+    guard.angle = Math.atan2(365 - 300, 585 - 300);
     guard.state = 'suspicious';
-    guard.target = { x: 520, y: 300 };
+    guard.target = { x: 520, y: 320 };
     guard.detection = 0.55;
     const guard2 = world.guards[1];
     guard2.x = 800;
     guard2.y = 420;
     guard2.angle = -Math.PI / 2;
+    // Camera sweeps down-right so its cone tip lands in the cloud.
+    world.cameras[0].angle = 1.4;
     world.time = 8;
     world.alarm = 18;
     world.levelTime = 42;

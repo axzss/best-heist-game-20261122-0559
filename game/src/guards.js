@@ -5,7 +5,7 @@
 // spot when the trail goes cold, then walks back to its patrol.
 
 import { GUARD, PLAYER, STEP } from './config.js';
-import { angleDelta, hasLineOfSight, inShadow, lightFactor, pointInCone } from './vision.js';
+import { angleDelta, cloudBlocksSight, hasLineOfSight, inShadow, lightFactor, pointInCone, sameSmokeCloud } from './vision.js';
 
 export const GUARD_PATROL = 'patrol';
 export const GUARD_SUSPICIOUS = 'suspicious';
@@ -95,7 +95,15 @@ export function updateGuard(guard, world, dt) {
   const blockers = world.blockers;
   const boost = world.lockdown ? 1.25 : 1;
   const inCone = pointInCone(player.x, player.y, guard.x, guard.y, guard.angle, GUARD.coneRange, GUARD.coneHalfAngle);
-  const seen = inCone && hasLineOfSight(guard.x, guard.y, player.x, player.y, blockers);
+  // Sight needs a clear wall line AND a clear smoke line: any cloud the
+  // ray crosses blocks it. That covers both directions at once — a thief
+  // inside a cloud is hidden from outside, and a guard standing inside a
+  // cloud is blind (its ray starts inside the circle). The cloud list is
+  // the one the world fixed at the start of this tick, so every guard in
+  // the tick sees the same clouds.
+  const clouds = world.smokeClouds ?? [];
+  const smokeBlocked = cloudBlocksSight(guard.x, guard.y, player.x, player.y, clouds);
+  const seen = inCone && !smokeBlocked && hasLineOfSight(guard.x, guard.y, player.x, player.y, blockers);
   const dist = Math.hypot(player.x - guard.x, player.y - guard.y);
   const hidden = inShadow(player.x, player.y, world.level.shadows) && dist > GUARD.adjacentSeeRadius;
 
@@ -108,7 +116,10 @@ export function updateGuard(guard, world, dt) {
     if (inShadow(player.x, player.y, world.level.shadows)) rate *= GUARD.shadowScale;
     guard.detection = Math.min(1, guard.detection + rate * dt);
     guard.lastSeen = { x: player.x, y: player.y };
-  } else if (dist < GUARD.adjacentSeeRadius && hasLineOfSight(guard.x, guard.y, player.x, player.y, blockers)) {
+  } else if (dist < GUARD.adjacentSeeRadius && hasLineOfSight(guard.x, guard.y, player.x, player.y, blockers)
+    // Bump range through smoke only when both are inside the SAME cloud:
+    // a guard outside a cloud cannot bump-detect a thief hidden in it.
+    && (!smokeBlocked || sameSmokeCloud(guard.x, guard.y, player.x, player.y, clouds))) {
     guard.detection = Math.min(1, guard.detection + 1.4 * dt);
     guard.lastSeen = { x: player.x, y: player.y };
   } else {

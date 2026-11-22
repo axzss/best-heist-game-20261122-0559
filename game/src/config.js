@@ -59,6 +59,18 @@ export const ALARM = {
 export const COIN = { start: 3, pingRadius: 230, flightSeconds: 0.45 };
 export const EMP = { start: 2, range: 280 };
 
+// Smoke pellets: 1 per level, thrown 4 tiles ahead in the facing direction.
+// The cloud (3-tile radius, 4.0 s = 240 fixed ticks) blocks guard and camera
+// sight; the throw's hiss draws nearby guards to investigate the cloud.
+export const SMOKE = {
+  start: 1,
+  rangePx: 128, // 4 tiles of 32 px
+  radiusPx: 96, // 3 tiles
+  durationTicks: 240, // 4.0 s at 60 Hz
+  flightSpeed: 320, // px per second, fixed-step flight
+  hearRadius: 192, // ~6 tiles: guards inside this hear the throw land
+};
+
 // Lasers on the vault floor and the rooftop.
 export const LASER = { cycleSeconds: 4, onSeconds: 2.4, alarmHit: 22 };
 

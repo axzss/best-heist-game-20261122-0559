@@ -52,6 +52,57 @@ export function hasLineOfSight(x1, y1, x2, y2, blockers) {
   return true;
 }
 
+/**
+ * True when the segment P1->P2 touches or passes through the circle
+ * (cx, cy, r). Analytic quadratic — no sampling, no randomness, so the
+ * same segment and cloud always give the same answer. A segment that
+ * starts inside the circle counts as blocked: an observer standing in
+ * smoke cannot see out of it.
+ */
+export function segmentHitsCircle(x1, y1, x2, y2, cx, cy, r) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const fx = x1 - cx;
+  const fy = y1 - cy;
+  const a = dx * dx + dy * dy;
+  const c = fx * fx + fy * fy - r * r;
+  if (c <= 0) return true; // start point inside the circle
+  if (a === 0) return false; // degenerate segment, outside the circle
+  const b = 2 * (fx * dx + fy * dy);
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return false;
+  const t = (-b - Math.sqrt(disc)) / (2 * a);
+  return t >= 0 && t <= 1;
+}
+
+/**
+ * True when any active smoke cloud stands between the two points. This is
+ * the smoke half of line-of-sight: walls are tested by hasLineOfSight,
+ * clouds by this function, and a sight line is clear only when both pass.
+ */
+export function cloudBlocksSight(x1, y1, x2, y2, clouds) {
+  for (const cloud of clouds) {
+    if (segmentHitsCircle(x1, y1, x2, y2, cloud.x, cloud.y, cloud.radius)) return true;
+  }
+  return false;
+}
+
+/** The cloud containing (x, y), or null when the point is in clear air. */
+export function cloudAt(x, y, clouds) {
+  for (const cloud of clouds) {
+    const dx = x - cloud.x;
+    const dy = y - cloud.y;
+    if (dx * dx + dy * dy < cloud.radius * cloud.radius) return cloud;
+  }
+  return null;
+}
+
+/** True when both points sit inside the same smoke cloud. */
+export function sameSmokeCloud(x1, y1, x2, y2, clouds) {
+  const a = cloudAt(x1, y1, clouds);
+  return a !== null && a === cloudAt(x2, y2, clouds);
+}
+
 /** True when the point sits inside one of the level's shadow pools. */
 export function inShadow(x, y, shadows) {
   for (const pool of shadows) {

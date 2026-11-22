@@ -5,7 +5,7 @@
 
 import { STEP, VIEW } from './config.js';
 import { bindInput } from './input.js';
-import { ensureAudio, playAlarmSting, playCaught, playCoinPing, playDiamond, playEmpZap, playLockdown, playPickup, playStep, playSuspicious, playWin, startDrone } from './audio.js';
+import { ensureAudio, playAlarmSting, playCaught, playCoinPing, playDiamond, playEmpZap, playLockdown, playPickup, playSmoke, playStep, playSuspicious, playWin, startDrone } from './audio.js';
 import { createWorld, nextLevel, restartLevel, updateWorld, EVENT_CAUGHT, EVENT_GAME, EVENT_LEVEL, SCREEN_BRIEF, SCREEN_CAUGHT, SCREEN_LEVEL, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WIN } from './world.js';
 import { render } from './render.js';
 import { stageShot } from './shots.js';
@@ -34,6 +34,7 @@ function handleEvents(world, screen) {
     if (event.type === 'alerted' || event.type === 'camera-spot') playAlarmSting();
     if (event.type === 'lockdown') playLockdown();
     if (event.type === 'coin-ping') playCoinPing();
+    if (event.type === 'smoke') playSmoke();
     if (event.type === 'emp') playEmpZap();
     if (event.type === 'pickup') playPickup();
     if (event.type === 'diamond') playDiamond();
