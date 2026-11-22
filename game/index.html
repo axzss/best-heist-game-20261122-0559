@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Halcyon Heist — a museum burglary in three acts</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #070d12; height: 100%; }
+  body { display: flex; align-items: center; justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif; }
+  #stage { position: relative; width: 960px; height: 600px;
+    box-shadow: 0 0 60px rgba(0, 0, 0, .9), 0 0 0 1px #2a3f4a; }
+  canvas { display: block; width: 960px; height: 600px; background: #0b141a; }
+  #hint { position: absolute; left: 0; right: 0; bottom: -26px; text-align: center;
+    color: #5f7d8c; font-size: 12px; font-family: system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="960" height="600"></canvas>
+  <div id="hint">WASD / arrows to move &middot; Shift to sneak &middot; click or F to toss a coin &middot; E to EMP the nearest camera &middot; P to pause</div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
